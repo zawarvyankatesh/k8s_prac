@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-page
+  namespace: k8s-live-demo
+data:
+  default.conf: |
+    server {
+      listen 80;
+      server_name _;
+      root /usr/share/nginx/html;
+      location / { try_files $uri $uri/ /index.html; }
+      location = /whoami {
+        default_type text/plain;
+        add_header Cache-Control "no-store";
+        return 200 "$hostname\n";
+      }
+      location = /healthz { return 200 "ok\n"; }
+    }
+  index.html: |
+    <!doctype html>
+    <html lang="en">
+    <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Kubernetes Live Lab</title>
+    <style>
+      body { font-family: system-ui, sans-serif; background:#0d1224; color:#fff; display:grid; place-items:center; min-height:100vh; margin:0 }
+      main { max-width:680px; padding:48px; border:1px solid #394260; border-radius:24px; background:#1c2541; box-shadow:0 20px 70px #060913 }
+      h1 { font-size:clamp(2rem,6vw,3.5rem); margin:0 0 12px } p { color:#cbd5e1; line-height:1.6 }
+      code { color:#8af2cd; overflow-wrap:anywhere } button { background:#8af2cd; color:#10252b; border:0; border-radius:12px; padding:14px 22px; font-weight:700; cursor:pointer }
+      #pod { font-size:1.3rem; font-weight:bold } .tag {color:#8af2cd; letter-spacing:.12em; text-transform:uppercase}
+    </style></head>
+    <body><main><div class="tag">Kubernetes live lab</div><h1>Which Pod answered?</h1>
+    <p>NGINX serves this page. A Service can send each request to a different replica.</p>
+    <p>Current Pod: <code id="pod">loading...</code></p>
+    <button onclick="load()">Ask the Service again</button>
+    <p>Try scaling the Deployment, deleting a Pod, or adding an Ingress.</p>
+    </main><script>
+      async function load() { const el = document.getElementById('pod'); try { el.textContent = (await (await fetch('/whoami?at='+Date.now(), {cache:'no-store'})).text()).trim(); } catch(e) { el.textContent = 'Unavailable'; } }
+      load();
+    </script></body></html>

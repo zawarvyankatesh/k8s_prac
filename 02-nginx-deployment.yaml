@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: k8s-live-demo
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app: demo-web}
+  template:
+    metadata:
+      labels: {app: demo-web}
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:stable-alpine
+          ports:
+            - {name: http, containerPort: 80}
+          resources:
+            requests: {cpu: 25m, memory: 32Mi}
+            limits: {cpu: 200m, memory: 128Mi}
+          volumeMounts:
+            - {name: page, mountPath: /usr/share/nginx/html/index.html, subPath: index.html, readOnly: true}
+            - {name: page, mountPath: /etc/nginx/conf.d/default.conf, subPath: default.conf, readOnly: true}
+      volumes:
+        - name: page
+          configMap: {name: demo-page}
