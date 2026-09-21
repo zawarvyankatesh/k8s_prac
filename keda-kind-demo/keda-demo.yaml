@@ -1,0 +1,102 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: keda-demo
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: keda-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7.4-alpine
+          args: ["redis-server", "--save", "", "--appendonly", "no"]
+          ports:
+            - containerPort: 6379
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 2
+            periodSeconds: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: keda-demo
+spec:
+  selector:
+    app: redis
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: 6379
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: queue-worker
+  namespace: keda-demo
+spec:
+  replicas: 0 # KEDA owns this replica count after the ScaledObject is applied.
+  selector:
+    matchLabels:
+      app: queue-worker
+  template:
+    metadata:
+      labels:
+        app: queue-worker
+    spec:
+      containers:
+        - name: worker
+          image: redis:7.4-alpine
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "worker started: $(hostname)"
+              until redis-cli -h redis ping >/dev/null 2>&1; do sleep 1; done
+              while true; do
+                job="$(redis-cli -h redis BLPOP jobs 0 | tail -n 1)"
+                echo "$(date -Iseconds) $(hostname) processing ${job}"
+                sleep 5
+              done
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: redis-queue-worker
+  namespace: keda-demo
+spec:
+  scaleTargetRef:
+    name: queue-worker
+  pollingInterval: 5
+  cooldownPeriod: 20
+  minReplicaCount: 0
+  maxReplicaCount: 5
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 0
+          policies:
+            - type: Percent
+              value: 100
+              periodSeconds: 15
+  triggers:
+    - type: redis
+      metadata:
+        address: redis.keda-demo.svc.cluster.local:6379
+        listName: jobs
+        listLength: "5"
+        activationListLength: "0"

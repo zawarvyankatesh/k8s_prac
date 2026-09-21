@@ -61,7 +61,6 @@ def patch_condition(api, pod, ok, message):
         name=pod.metadata.name,
         namespace=NAMESPACE,
         body={"status": {"conditions": [condition]}},
-        _content_type="application/strategic-merge-patch+json",
     )
     logging.info("%s: %s (%s)", pod.metadata.name, status, message)
 
