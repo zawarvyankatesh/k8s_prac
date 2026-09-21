@@ -38,6 +38,13 @@ spec:
               cpu: 200m
               memory: 128Mi
 
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 5
+            failureThreshold: 12
+  
           # Pod is Ready only when Redis replies PONG.
           readinessProbe:
             exec:
