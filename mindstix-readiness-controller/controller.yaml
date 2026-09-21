@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mindstix-readiness-controller
+  namespace: k8s-live-demo
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: mindstix-readiness-controller
+  namespace: k8s-live-demo
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/status"]
+    verbs: ["get", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: mindstix-readiness-controller
+  namespace: k8s-live-demo
+subjects:
+  - kind: ServiceAccount
+    name: mindstix-readiness-controller
+    namespace: k8s-live-demo
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: mindstix-readiness-controller
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mindstix-readiness-controller
+  namespace: k8s-live-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mindstix-readiness-controller
+  template:
+    metadata:
+      labels:
+        app: mindstix-readiness-controller
+    spec:
+      serviceAccountName: mindstix-readiness-controller
+      containers:
+        - name: controller
+          image: mindstix-readiness-controller:0.1
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: NAMESPACE
+              value: k8s-live-demo
+            - name: CHECK_URL
+              value: https://mindstix.com
+            - name: POLL_SECONDS
+              value: "10"
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
