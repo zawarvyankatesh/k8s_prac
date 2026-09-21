@@ -16,6 +16,10 @@ data:
         return 200 "$hostname\n";
       }
       location = /healthz { return 200 "ok\n"; }
+      location = /redis-ready {
+        root /health;
+        try_files $uri =503;
+}
     }
   index.html: |
     <!doctype html>
