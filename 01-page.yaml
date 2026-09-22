@@ -9,36 +9,49 @@ data:
       listen 80;
       server_name _;
       root /usr/share/nginx/html;
+      add_header Cache-Control "no-store" always;
       location / { try_files $uri $uri/ /index.html; }
       location = /whoami {
         default_type text/plain;
-        add_header Cache-Control "no-store";
         return 200 "$hostname\n";
       }
-      location = /healthz { return 200 "ok\n"; }
-      location = /redis-ready {
-        root /health;
-        try_files $uri =503;
-}
+      location = /healthz {
+        default_type text/plain;
+        return 200 "ok\n";
+      }
     }
   index.html: |
     <!doctype html>
     <html lang="en">
-    <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Kubernetes Live Lab</title>
-    <style>
-      body { font-family: system-ui, sans-serif; background:#0d1224; color:#fff; display:grid; place-items:center; min-height:100vh; margin:0 }
-      main { max-width:680px; padding:48px; border:1px solid #394260; border-radius:24px; background:#1c2541; box-shadow:0 20px 70px #060913 }
-      h1 { font-size:clamp(2rem,6vw,3.5rem); margin:0 0 12px } p { color:#cbd5e1; line-height:1.6 }
-      code { color:#8af2cd; overflow-wrap:anywhere } button { background:#8af2cd; color:#10252b; border:0; border-radius:12px; padding:14px 22px; font-weight:700; cursor:pointer }
-      #pod { font-size:1.3rem; font-weight:bold } .tag {color:#8af2cd; letter-spacing:.12em; text-transform:uppercase}
-    </style></head>
-    <body><main><div class="tag">Kubernetes live lab</div><h1>Which Pod answered?</h1>
-    <p>NGINX serves this page. A Service can send each request to a different replica.</p>
-    <p>Current Pod: <code id="pod">loading...</code></p>
-    <button onclick="load()">Ask the Service again</button>
-    <p>Try scaling the Deployment, deleting a Pod, or adding an Ingress.</p>
-    </main><script>
-      async function load() { const el = document.getElementById('pod'); try { el.textContent = (await (await fetch('/whoami?at='+Date.now(), {cache:'no-store'})).text()).trim(); } catch(e) { el.textContent = 'Unavailable'; } }
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      <title>Kubernetes Live Lab</title>
+      <style>
+        body { font-family:system-ui,sans-serif; background:#0d1224; color:white;
+          display:grid; place-items:center; min-height:100vh; margin:0 }
+        main { max-width:680px; padding:40px; border:1px solid #394260;
+          border-radius:24px; background:#1c2541 }
+        code { color:#8af2cd; overflow-wrap:anywhere }
+        button { padding:12px 20px; border:0; border-radius:10px;
+          background:#8af2cd; cursor:pointer }
+      </style>
+    </head>
+    <body><main>
+      <h1>Which Pod answered?</h1>
+      <p>Pod serving the latest identity request:</p>
+      <p><code id="pod">Loading...</code></p>
+      <button onclick="load()">Send another request</button>
+      <p>The HTML and identity request can be served by different replicas.</p>
+    </main>
+    <script>
+      async function load() {
+        const el = document.getElementById('pod');
+        try {
+          const response = await fetch('/whoami?at=' + Date.now(), {cache:'no-store'});
+          if (!response.ok) throw new Error('HTTP ' + response.status);
+          el.textContent = (await response.text()).trim();
+        } catch (error) { el.textContent = 'Unavailable: ' + error.message; }
+      }
       load();
     </script></body></html>
