@@ -6,7 +6,22 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: demo.local
+    - host: demo1.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port: {name: http}
+          - path: /abc
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port: {name: http}
+    - host: demo2.local
       http:
         paths:
           - path: /
